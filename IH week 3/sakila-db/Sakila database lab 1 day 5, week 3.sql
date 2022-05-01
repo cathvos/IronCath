@@ -1,9 +1,6 @@
 ## Sakila database lab 1 day 5, week 3
 use sakila;
 
-select * from address;
-select * from city;
-
 # Write a query to display for each store its store ID, city and country.
 select store_id, city, country
 from store
