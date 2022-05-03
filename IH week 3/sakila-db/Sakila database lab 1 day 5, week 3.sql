@@ -38,7 +38,8 @@ using (film_id)
 inner join category
 using (category_id)
 group by name
-order by avg_running_time desc;
+order by avg_running_time desc
+limit 3;
 
 # Display the most frequently rented movies in descending order.
 select title, count(inventory_id) as frequency_rental

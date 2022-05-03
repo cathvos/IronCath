@@ -224,6 +224,176 @@ select rating, title, length , round(avg(length)over(partition by rating),0) as 
 ,dense_rank() over(partition by rating order by length DESC)as ranking
 from film; # using dense rank
 
+# Day 4
+ use bank;
+ # join function / it can help to alias the tables to understand what is what (c. is client d. is district
+ # how many clients we have per district?
+ select d.A2 as district_name, d.A3 as region_name, count(distinct client_id) as nr_of_clients
+ from district d # left table
+ left join client c #right table and join table
+ on d.A1 = c.district_id # join clause(s)
+ # using() if the fields are named the same
+ group by d.A2,d.A3;
+ 
+ # how many loans and avg amount per account
+ select a.account_id, a.date, count(l.loan_id), avg(l.amount)
+ from loan l# left table
+ inner join account a # right table
+ using (account_id) # join clause
+ group by a.account_id, a.date; # aggreg process
+ 
+## excersise
+# Get a list of districts ordered by the number of clients (descending order). Name the columns as: 
+# District_name and Number_of_clients respectively.
+select d.A2 as district_name, count(distinct client_id) as number_of_clients
+from district d # left table
+inner join client c #right table and join table
+on d.A1 = c.district_id # join clause(s)
+# using() if the fields are named the same
+group by d.A2
+order by number_of_clients DESC;
+
+# Get a list of regions ordered by the number of clients (descending order). Name the columns as: 
+# Region_name and Number_of_clients respectively.
+select d.A3 as region_name, count(distinct client_id) as nr_of_clients
+ from district d # left table
+ left join client c #right table and join table
+ on d.A1 = c.district_id # join clause(s)
+ # using() if the fields are named the same
+ group by d.A3
+ order by nr_of_clients desc;
+ 
+# Get the number of accounts opened by district and year. Name the columns as: 
+# District_name, Year and Accounts_opened. Order the results by District_name and Year.
+select d.A2 as district_name, extract(YEAR FROM a.date) as year, count(distinct a.account_id) as accounts_opened
+from district d # left table
+inner join account a #right table and join table
+on d.A1 = a.district_id # join clause(s)
+# using() if the fields are named the same
+group by d.A2, extract(YEAR FROM a.date)
+order by d.A2, extract(YEAR FROM a.date);
+
+# example where left and right matters
+# from account to loan
+select * from account
+inner join loan
+using(account_id);
+
+select * from account # you can have an account without a loan
+left join loan
+using(account_id);
+
+select * from account # you can´t have a loan without an account
+right join loan
+using(account_id);
+
+# example of using multiple tables - joining 3 tables loan, account, district
+# how many loans per region
+select d.A3 as region, count(l.loan_id) as noofloans, count(a.account_id) as noonaccounts
+from loan l
+inner join account a
+using (account_id)
+inner join district d
+on a.district_id = d.A1
+group by A3;
+
+# Extend the query below and list district_name, client_id, and account_id for those clients who are the owner of the account. 
+# Order the results by district_name:
+
+select da.A2 as district_name, c.client_id, d.account_id  
+from bank.disp d
+join bank.client as c using(client_id)
+join bank.district as da on c.district_id =da.A1
+inner join account a
+using (account_id)
+order by da.A2; ## not working yet need to check solution
+
+# DDL(definition) data definition language and DML(manipulate)
+# create alter drop truncate rename update
+
+create database booksauthors;
+use booksauthors;
+
+-- create the needed tables
+drop table if exists authors;
+create table authors
+(author_id INT AUTO_INCREMENT NOT NULL, author_name VARCHAR(30) DEFAULT NULL, country VARCHAR (30) DEFAULT NULL, PRIMARY KEY (author_id));
+
+drop table if exists books;
+create table books
+(book_id INT AUTO_INCREMENT NOT NULL,
+author_id INT NOT NULL, 
+book_name VARCHAR(50) DEFAULT NULL, 
+PRIMARY KEY (book_id), KEY idx_fk_author_id (author_id), 
+constraint fk_author_id foreign key(author_id)references authors(author_id) on delete restrict on update cascade);
+
+-- insert data into tables
+insert into authors (author_name, country)
+values ('Aja Barber', 'USA'), ('Robin Wall Kimmerer', 'USA'), ('Noah Gordon', 'USA'), ('Nazanine Hozar', 'Iran'), ('Mark Manson', 'USA');
+
+select * from authors;
+# UPDATE authors set country = 'U.S.A' where author_id in (1,2,3,5);
+# you can use the update function to correct any mistakes
+
+# INSERT INTO authors()...
+
+insert into books (author_id,book_name)
+values (1,'Consumed'), (2,'Braiding sweetgrass'), (3,'La bodega'), (4,'Aria'), (5,'The subtle art of not giving a f*ck');
+
+select * from books;
+
+select * from books
+right join authors 
+using(author_id);
+
+# CTE´S - common table expressions
+# we want to join x + y but x does not exist
+-- transactions table - get the total amount for each account and any acc info
+-- then draw on that table to get information
+-- use that table to join to another table
+
+with cte_loan as ( select*from loan)
+select loan_id from cte_loan
+where status = 'B';
+
+# subqueries - a query inside a query
+# step 1 write your inner query and check if it works, step 2 write your out query after and check it
+# question is; which loans are bigger then the average?
+select avg (amount) from loan; # sub query
+select * from loan where amount > (select avg (amount) from loan); # full query
+-- one value(==>), a column of values (IN), a table of values (sub query needs an alias)
+
+# Find out the average of the number of transactions by account.
+# Hint: Compute first the number of transactions by account.
+
+select account_id, count(trans_id) as transact from trans group by account_id; # sub query
+
+select avg (transact) from
+(select account_id, count(trans_id) as transact from trans group by account_id) s; # full query
+
+
+# Get a list of accounts from Central Bohemia using a subquery
+select A1 from district where A3 LIKE '%Bohemia'; # sub query
+select account_id from account where district_id in (select A1 from district where A3 LIKE 'Central Bohemia'); # full query
+
+# views - ready made queries
+select * from sakila.sales_by_film_category;
+## 
+use bank;
+create view clients_loans_combo  as
+select c.client_id, c.district_id, l.loan_id, l.status, l.amount, l.duration, l.payments, l.date as loan_date 
+from client c
+join disp dp using (client_id)
+join account a using (account_id)
+join loan l using (account_id)
+where dp.type = 'OWNER';
+
+select * from bank.clients_loans_combo;
+
+# more window fx - optional
+
+use sakila;
+select * from rental;
 
 
 
